@@ -61,6 +61,8 @@ public class ItemWriterConfiguration {
                 .encoding("UTF-8")
                 .resource(new FileSystemResource("output/test-output.csv"))
                 .lineAggregator(lineAggregator)
+                .headerCallback(writer -> writer.write("id,이름,나이,거주지"))
+                .footerCallback(writer -> writer.write("-----------------"))
                 .build();
 
         itemWriter.afterPropertiesSet();
