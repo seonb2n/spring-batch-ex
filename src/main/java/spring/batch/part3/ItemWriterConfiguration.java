@@ -48,7 +48,7 @@ public class ItemWriterConfiguration {
                 .incrementer(new RunIdIncrementer())
                 .start(this.csvItemWriterStep())
 //                .next(this.jdbcBatchItemWriterStep())
-                .next(this.jpaItemWriterStep())
+//                .next(this.jpaItemWriterStep())
                 .build();
     }
 
@@ -114,7 +114,6 @@ public class ItemWriterConfiguration {
                 .lineAggregator(lineAggregator)
                 .headerCallback(writer -> writer.write("id,이름,나이,거주지"))
                 .footerCallback(writer -> writer.write("----------------------\n"))
-                .append(true)
                 .build();
 
         itemWriter.afterPropertiesSet();
@@ -128,7 +127,7 @@ public class ItemWriterConfiguration {
     private List<Person> getItems() {
         List<Person> items = new ArrayList<>();
         for (int i = 0; i < 100; i++) {
-            items.add(new Person(0, "test_name" + i, "test age", "test address"));
+            items.add(new Person(0, "test_name" + (i-i%2), "test age", "test address"));
         }
         return items;
     }
