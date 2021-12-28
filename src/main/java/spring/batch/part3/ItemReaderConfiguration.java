@@ -9,8 +9,10 @@ import org.springframework.batch.core.launch.support.RunIdIncrementer;
 import org.springframework.batch.item.ItemWriter;
 import org.springframework.batch.item.database.JdbcCursorItemReader;
 import org.springframework.batch.item.database.JpaCursorItemReader;
+import org.springframework.batch.item.database.JpaPagingItemReader;
 import org.springframework.batch.item.database.builder.JdbcCursorItemReaderBuilder;
 import org.springframework.batch.item.database.builder.JpaCursorItemReaderBuilder;
+import org.springframework.batch.item.database.builder.JpaPagingItemReaderBuilder;
 import org.springframework.batch.item.file.FlatFileItemReader;
 import org.springframework.batch.item.file.builder.FlatFileItemReaderBuilder;
 import org.springframework.batch.item.file.mapping.DefaultLineMapper;
@@ -93,6 +95,18 @@ public class ItemReaderConfiguration {
                 .name("jpaCursorItemReader")
                 .entityManagerFactory(entityManagerFactory)
                 .queryString("select p from Person p")
+                .build();
+        itemReader.afterPropertiesSet();
+
+        return itemReader;
+    }
+
+    private JpaPagingItemReader<Person> jpaPagingItemReader() throws Exception {
+        JpaPagingItemReader<Person> itemReader = new JpaPagingItemReaderBuilder<Person>()
+                .name("jpaPagingItemREader")
+                .entityManagerFactory(entityManagerFactory)
+                .queryString("select p from Person p")
+                .pageSize(100)
                 .build();
         itemReader.afterPropertiesSet();
 
