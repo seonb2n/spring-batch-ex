@@ -6,7 +6,6 @@ import org.springframework.batch.core.Step;
 import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
 import org.springframework.batch.core.configuration.annotation.JobScope;
 import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
-import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
 import org.springframework.batch.item.ItemProcessor;
 import org.springframework.batch.item.ItemWriter;
@@ -44,16 +43,18 @@ public class SavePersonConfiguration {
     }
 
     @Bean
-    public Job itemCustomJob() throws Exception {
+    public Job savePersonJob() throws Exception {
         return this.jobBuilderFactory.get("itemCustomJob")
                 .incrementer(new RunIdIncrementer())
-                .start(this.itemCustomStep(null))
+                .start(this.savePersonStep(null))
+                .listener(new SavePersonListener.SavePersonJobExecutionListener())
+                .listener(new SavePersonListener.SavePersonAnnotationJobExecutionListener())
                 .build();
     }
 
     @Bean
     @JobScope
-    public Step itemCustomStep(@Value("#{jobParameters[allow_duplicate]}") String allow_duplicate) throws Exception {
+    public Step savePersonStep(@Value("#{jobParameters[allow_duplicate]}") String allow_duplicate) throws Exception {
         return this.stepBuilderFactory.get("itemCustomStep")
                 .<Person, Person>chunk(10)
                 .reader(this.customItemReader())

@@ -12,11 +12,15 @@ import org.springframework.batch.item.ItemWriter;
 import org.springframework.batch.item.database.JpaItemWriter;
 import org.springframework.batch.item.database.builder.JpaItemWriterBuilder;
 import org.springframework.batch.item.file.FlatFileItemReader;
+import org.springframework.batch.item.file.FlatFileParseException;
 import org.springframework.batch.item.file.builder.FlatFileItemReaderBuilder;
 import org.springframework.batch.item.file.mapping.DefaultLineMapper;
 import org.springframework.batch.item.file.transform.DelimitedLineTokenizer;
 import org.springframework.batch.item.file.transform.FieldSet;
+import org.springframework.batch.item.file.transform.IncorrectTokenCountException;
+import org.springframework.batch.item.support.CompositeItemProcessor;
 import org.springframework.batch.item.support.CompositeItemWriter;
+import org.springframework.batch.item.support.builder.CompositeItemProcessorBuilder;
 import org.springframework.batch.item.support.builder.CompositeItemWriterBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -62,8 +66,14 @@ public class ItemCustomConfiguration {
         return this.stepBuilderFactory.get("itemCustomStep")
                 .<Person, Person>chunk(10)
                 .reader(this.customItemReader())
-                .processor(this.customItemProcessor(false))
+                .processor(this.ItemProcessorForSkip("true"))
                 .writer(this.customCompositeItemWriter())
+                .listener(new SavePersonListener.SavePersonStepExecutionListener())
+                .faultTolerant()
+                .skip(IncorrectTokenCountException.class)
+                .skipLimit(3)
+                .retry(NotFoundNameException.class)
+                .retryLimit(3)
                 .build();
     }
 
@@ -85,6 +95,23 @@ public class ItemCustomConfiguration {
         return items -> items.forEach(p -> log.info("name : {}, age : {}", p.getName(), p.getAge()));
     }
 
+    private ItemProcessor<? super Person, ? extends Person> ItemProcessorForSkip(String allow_duplicate) throws Exception {
+        ItemProcessor<? super Person, ? extends Person> duplicateValidationProcessor = customItemProcessor(Boolean.parseBoolean(allow_duplicate));
+        ItemProcessor<Person, Person> validationProcessor = item -> {
+            if (item.isNotEmptyName()) {
+                return item;
+            }
+
+            throw new NotFoundNameException();
+        };
+
+        CompositeItemProcessor<Person, Person> itemProcessor = new CompositeItemProcessorBuilder()
+                .delegates(new PersonValidationRetryProcessor(), validationProcessor, duplicateValidationProcessor)
+                .build();
+
+        itemProcessor.afterPropertiesSet();
+        return itemProcessor;
+    }
 
     private ItemProcessor<? super Person, ? extends Person> customItemProcessor(boolean allow_duplicate) {
 

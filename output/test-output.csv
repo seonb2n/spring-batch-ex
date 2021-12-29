@@ -96,6 +96,6 @@ id,이름,나이,거주지
 0,test_name94,test age,test address
 0,test_name94,test age,test address
 0,test_name96,test age,test address
-0,test_name96,test age,test address
-0,test_name98,test age,test address
-0,test_name98,test age,test address
+0,,test age,test address
+0,,test age,test address
+0,,test age,test address
