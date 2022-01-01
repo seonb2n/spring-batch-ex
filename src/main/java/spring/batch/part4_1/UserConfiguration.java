@@ -23,6 +23,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.FileSystemResource;
+import spring.batch.part5.JobParametersDecide;
 import spring.batch.part5.OrderStatistics;
 
 import javax.persistence.EntityManagerFactory;
@@ -38,6 +39,7 @@ import java.util.Map;
 @Slf4j
 public class UserConfiguration {
 
+    private final int CHUNK = 100;
     private final JobBuilderFactory jobBuilderFactory;
     private final StepBuilderFactory stepBuilderFactory;
     private final UserRepository userRepository;
@@ -58,8 +60,11 @@ public class UserConfiguration {
                 .incrementer(new RunIdIncrementer())
                 .start(this.saveUserStep())
                 .next(this.userLevelUpStep())
-                .next(this.OrderStatisticsStep(null))
                 .listener(new LevelUpJobExecutionListener(userRepository))
+                .next(new JobParametersDecide("date"))
+                .on(JobParametersDecide.CONTINUE.getName())
+                .to(this.OrderStatisticsStep(null))
+                .build()
                 .build();
     }
 
@@ -67,7 +72,7 @@ public class UserConfiguration {
     @JobScope
     public Step OrderStatisticsStep(@Value("#{jobParameters[date]}") String date) throws Exception {
         return this.stepBuilderFactory.get("orderStatisticsStep")
-                .<OrderStatistics, OrderStatistics> chunk(100)
+                .<OrderStatistics, OrderStatistics> chunk(CHUNK)
                 .reader(orderStatisticsItemReader(date))
                 .writer(orderStatisticsItemWriter(date))
                 .build();
@@ -84,6 +89,7 @@ public class UserConfiguration {
        lineAggregator.setDelimiter(",");
        lineAggregator.setFieldExtractor(fieldExtractor);
 
+       //step 이 끝나는 시점에 한번에 파일 생성
         FlatFileItemWriter<OrderStatistics> itemWriter = new FlatFileItemWriterBuilder<OrderStatistics>()
                 .resource(new FileSystemResource("output/" + fileName))
                 .lineAggregator(lineAggregator)
@@ -112,7 +118,7 @@ public class UserConfiguration {
                         .amount(resultSet.getString(1))
                         .date(LocalDate.parse(resultSet.getString(2), DateTimeFormatter.ISO_DATE))
                         .build())
-                .pageSize(100)
+                .pageSize(CHUNK)
                 .name("orderStatisticsItemReader")
                 .selectClause("sum(amount), created_date")
                 .fromClause("orders")
@@ -136,7 +142,7 @@ public class UserConfiguration {
     @Bean
     public Step userLevelUpStep() throws Exception {
         return  this.stepBuilderFactory.get("userLevelUpStep")
-                .<User, User>chunk(100)
+                .<User, User>chunk(CHUNK)
                 .reader(itemReader())
                 .processor(itemProcessor())
                 .writer(itemWriter())
@@ -166,7 +172,7 @@ public class UserConfiguration {
         JpaPagingItemReader<User> itemReader = new JpaPagingItemReaderBuilder<User>()
                 .queryString("select u from User u")
                 .entityManagerFactory(entityManagerFactory)
-                .pageSize(100)
+                .pageSize(CHUNK)
                 .name("userItemReader")
                 .build();
 
